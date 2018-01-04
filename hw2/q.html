@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en_US">
+  <head>
+    <meta charset="utf-8"/>
+    <title>Homework 2: a Query Language</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mocha/2.4.5/mocha.min.js"/></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mocha/2.4.5/mocha.min.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chai/3.5.0/chai.min.js"/></script>
+    <script>
+      $.get("https://data.seattle.gov/api/views/vtr2-wp3r/rows.json", function(data) {
+          window.raw_data = data.data;
+          mocha.run();
+      }, "json");
+    </script>
+    <script src="q.js"></script>
+    <script src="test.js"></script>
+  </head>
+  <body>
+    <h1>Homework 2: a Query Language</h1>
+
+    <p>
+      This page is a test harness for Homework 2. The graders will use
+      Chrome 49 (not Chromium) to test your assignments; you will want
+      every test on this page to pass, as well as several hidden tests
+      that the graders will also run.
+    </p>
+    
+    <p>The graders will also examine your code. Do not make any
+    changes to this page.</p>
+    
+    <div id="mocha"></div>
+    <div id="messages"></div>
+    <div id="fixtures"></div>
+  </body>
+</html>

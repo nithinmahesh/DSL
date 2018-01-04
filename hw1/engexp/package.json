@@ -1,0 +1,20 @@
+{
+  "name": "hw1",
+  "version": "1.0.0",
+  "description": "",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^2.4.5",
+    "typescript": "^1.8.9",
+    "typings": "^0.7.9"
+  },
+  "scripts": {
+    "pretest": "tsc",
+    "test": "mocha",
+    "postinstall": "typings install"
+  }
+}

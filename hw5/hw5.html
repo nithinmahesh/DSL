@@ -1,0 +1,1185 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Nithin's HW5 D3 + Reactivity Demo</title>
+		<script type="text/javascript" src="d3.v3.js"></script>
+		<script type="text/javascript" src="underscore.js"></script>
+		<script type="text/javascript" src="jquery.csv.js"></script>
+		<script type="text/javascript" src="rx.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script> 
+		<style type="text/css">
+			#hour-chart {
+				width: 700px;
+				position: absolute;
+				left: 10px;
+				top: 300px;
+			}
+			#delay-chart {
+				width: 700px;
+				position: absolute;
+				left: 710px;
+				top: 300px;
+			}
+			#distance-chart {
+				width: 700px;
+				position: absolute;
+				left: 10px;
+				top: 550px;
+			}
+			#date-chart {
+				width: 700px;
+				position: absolute;
+				left: 710px;
+				top: 550px;
+			}
+			.chart {
+				display: inline-block;
+				height: 221px;
+				margin-bottom: 50px;
+			}
+			.hourChartxAxis path,
+			.hourChartxAxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.hourChartxAxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}
+
+			.distanceChartxAxis path,
+			.distanceChartxAxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.distanceChartxAxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}
+
+			.delayChartxAxis path,
+			.delayChartxAxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.delayChartxAxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}
+
+			.dateChartxAxis path,
+			.dateChartxAxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.dateChartxAxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}
+
+			.hourChartyAxis path,
+			.hourChartyAxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.hourChartyAxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}
+
+			.distanceChartyAxis path,
+			.distanceChartyAxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.distanceChartyAxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}
+
+			.delayChartyAxis path,
+			.delayChartyAxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.delayChartyAxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}
+
+			.dateChartyAxis path,
+			.dateChartyAxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.dateChartyAxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}
+			
+			.aside {
+				font-size: smaller;
+				width: 220px;
+			}
+			
+			.bar {
+				position: relative;
+				fill: steelblue;
+				z-index: -1;
+			}
+			
+			.greybar {
+				position: relative;
+				fill: gray;
+				z-index: -1;
+			}
+			.resize path {
+				position: relative;
+				fill: white;
+				stroke: #fff;
+				shape-rendering: crispEdges;
+				z-index: 2;
+			}
+			
+			#flight-list {
+			  min-height: 1024px;
+			  position: absolute;
+			  top: 800px;
+			}
+
+			#flight-list .date,
+			#flight-list .day {
+			  margin-bottom: .4em;
+			}
+
+			#flight-list .flight {
+			  line-height: 1.5em;
+			  background: #eee;
+			  width: 640px;
+			  margin-bottom: 1px;
+			}
+
+			#flight-list .time {
+			  color: #999;
+			}
+
+			#flight-list .flight div {
+			  display: inline-block;
+			  width: 100px;
+			}
+
+			#flight-list div.distance,
+			#flight-list div.delay {
+			  width: 160px;
+			  padding-right: 10px;
+			  text-align: right;
+			}
+
+			#flight-list .early {
+			  color: green;
+			}
+			
+			#flight-list .late {
+			  color: red;
+			}
+
+		</style>
+	</head>
+	<body>
+		<div id="My Title"><h1><center>Nithin's HW5 D3 + Reactivity Demo</center></h1></div>
+		<div id="My SubTitle"><h2><center>Airline On Time Data for January 2001</center></h2></div>
+		<p>Some questions to consider: <br/>
+		<ul>
+		<li>How does time-of-day correlate with arrival delay? </li>
+		<li>Are longer or shorter flights more likely to arrive early? </li>
+		<li>What happened on January 12?  </li>
+		<li>How do flight patterns differ between weekends and weekdays, or mornings and nights? </li>
+		</ul></p>
+
+		<script type="text/javascript">
+			// global constants
+			//
+			var margin = {top: 20, right: 20, bottom: 20, left: 50},
+				padding = {top: 10, right: 10, bottom: 25, left: 70},
+				outerWidth = 1000,
+				outerHeight = 800,
+				innerWidth = outerWidth - margin.left - margin.right,
+				innerHeight = outerHeight - margin.top - margin.bottom,
+				width = innerWidth - padding.left - padding.right,
+				height = innerHeight - padding.top - padding.bottom;
+
+				var allChartHeight = 200;
+			var hourChartWidth = 560;			
+			var delayChartWidth = 560;
+			var distanceChartWidth = 560;
+			var dateChartWidth = 560;
+			var yearFormat = d3.format("04d"),
+				formatWithoutComma = d3.format("");
+			var xScaleOffset = 3; 
+			var arcRadius = allChartHeight / 15;
+
+			var arrivalDelayBucket = 10;
+			var distanceBucket = 40;
+			var maxDelayTime = 200;
+			var maxDistance = 2000;
+			var maxRows = 40;
+			
+			var hourChartBarWidth = 18,
+				delayChartBarWidth = 15,
+				distanceChartBarWidth = 8,
+				dateChartBarWidth = 14;
+
+			// global variables
+			//
+			var globalDataset;
+			var flightList;
+			var hourChartBrush, delayChartBrush, distanceChartBrush, dateChartBrush;
+			var hourChartSvg, delayChartSvg, distanceChartSvg, dateChartSvg;
+			var hourChart, delayChart, distanceChart, dateChart;
+			var hourChartxScale, delayChartxScale, distanceChartxScale, dateChartxScale;
+			var hourChartyScale, delayChartyScale, distanceChartyScale, dateChartyScale;
+			
+			// grouping Functions
+			//
+			var hourChartGroupingFn = function(d) { return Math.floor(d["ArrTime"] / 100); }
+			var delayChartGroupingFn = function(d) { return Math.floor(d["ArrDelay"]/arrivalDelayBucket) * arrivalDelayBucket; }
+			var distanceChartGroupingFn = function(d) { return Math.floor(d["Distance"]/distanceBucket)*distanceBucket; }
+			var dateChartGroupingFn = function(d) { return Math.floor(d["DayofMonth"]); }
+	
+			// read the input CSV data and prepare our global data set
+			//
+			var csvFile = "flights-3m.json";
+			d3.csv(csvFile)
+				.row(function(d){
+					if (1 == parseInt(d.date.substring(0,2), 10)) // Only January data to keep data size small for good perf
+					return {
+						Month : parseInt(d.date.substring(0,2), 10),
+						DayofMonth : parseInt(d.date.substring(2,4), 10),
+						ArrTime : parseInt(d.date.substring(4,8), 10),
+						ArrDelay : parseInt(d.delay, 10),
+						Distance : parseInt(d.distance,10),
+						Origin: d.origin,
+						Destination: d.destination
+					};
+				})
+				.get(function(error, rows) {
+					globalDataset = rows;
+					//console.log(globalDataset.length);
+					initCharts();
+				});
+				
+			// initializes all elements on the page
+			//
+			function initCharts(){
+				var svg;
+				
+				// Block to display total displaying flight counts
+				//
+				var aside = d3.select("body")
+					.append("div")
+					.attr("class", "aside")
+					.text(globalDataset.length + " of " + globalDataset.length + " flights displayed.");
+				
+				d3.select("body").append("p");
+				
+				// Add high level charts
+				//
+				var charts = d3.select("body")
+					.append("div")
+					.attr("id", "charts")
+					.attr("class", "chart");				
+				
+				hourChart = charts.append("div")
+					.attr("id", "hour-chart")
+					.attr("class", "chart");
+					
+				delayChart = charts.append("div")
+					.attr("id", "delay-chart")
+					.attr("class", "chart");
+					
+				distanceChart = charts.append("div")
+					.attr("id", "distance-chart")
+					.attr("class", "chart");
+				
+				dateChart = charts.append("div")
+					.attr("id", "date-chart")
+					.attr("class", "chart");
+					
+				// Add chart titles
+				//
+				hourChart.append("div")
+					.attr("class", "hourChartTitle")
+					.text("Time of day\t");
+					
+				delayChart.append("div")
+					.attr("class", "delayChartTitle")
+					.text("Arrival delay (min.)\t");
+
+				distanceChart.append("div")
+					.attr("class", "distanceChartTitle")
+					.text("Distance (mi.)\t");
+					
+				dateChart.append("div")
+					.attr("class", "dateChartTitle")
+					.text("Date\t");
+				
+				// Add Svg elements for each chart
+				//
+				hourChartSvg = hourChart.append("svg")
+					.attr("width", hourChartWidth)
+					.attr("height", allChartHeight);
+					
+				delayChartSvg = delayChart.append("svg")
+					.attr("width", delayChartWidth)
+					.attr("height", allChartHeight);
+					
+				distanceChartSvg = distanceChart.append("svg")
+					.attr("width", distanceChartWidth)
+					.attr("height", allChartHeight);
+				
+				dateChartSvg = dateChart.append("svg")
+					.attr("width", dateChartWidth)
+					.attr("height", allChartHeight);
+				
+				// Generate x scale for each chart
+				//
+				hourChartxScale = d3.scale.linear()
+					 .domain([d3.min(globalDataset, hourChartGroupingFn), 
+					 d3.max(globalDataset, hourChartGroupingFn)])
+					 .range([padding.left, hourChartWidth - padding.right]);
+				
+				delayChartxScale = d3.scale.linear()
+					 .domain([d3.min(globalDataset, delayChartGroupingFn), 
+					 Math.min(maxDelayTime, d3.max(globalDataset, delayChartGroupingFn))])
+					 .range([padding.left, delayChartWidth - padding.right]);
+				
+				distanceChartxScale = d3.scale.linear()
+					 .domain([d3.min(globalDataset, distanceChartGroupingFn), 
+					 Math.min(maxDistance,d3.max(globalDataset, distanceChartGroupingFn))])
+					 .range([padding.left, distanceChartWidth - padding.right]);
+				
+				dateChartxScale = d3.scale.linear()
+					 .domain([d3.min(globalDataset, dateChartGroupingFn), 
+					 d3.max(globalDataset, dateChartGroupingFn)])
+					 .range([padding.left, dateChartWidth - padding.right]);
+
+				// Generate x axis G element
+				//
+				hourChartAxis = hourChartSvg.append("g")
+						.attr("class", "hourChartAxis")  
+						.attr("transform", "translate(0," + (allChartHeight - padding.bottom) + ")");
+				
+				var delayChartAxis = delayChartSvg.append("g")
+						.attr("class", "delayChartAxis")  
+						.attr("transform", "translate(0," + (allChartHeight - padding.bottom) + ")");
+				
+				var distanceChartAxis = distanceChartSvg.append("g")
+						.attr("class", "distanceChartAxis")  
+						.attr("transform", "translate(0," + (allChartHeight - padding.bottom) + ")");
+				
+				var dateChartAxis = dateChartSvg.append("g")
+						.attr("class", "dateChartAxis")  
+						.attr("transform", "translate(0," + (allChartHeight - padding.bottom) + ")");				
+				
+				// Generate x axis function from the scale and render the axis
+				//
+				var hourChartAxisFn = d3.svg.axis()
+                  .scale(hourChartxScale)
+                  .orient("bottom")
+				  .tickFormat(formatWithoutComma);
+				  
+				hourChartSvg.select("g.hourChartAxis")
+					.attr("class", "hourChartxAxis")  
+					.call(hourChartAxisFn);
+					
+				var delayChartAxisFn = d3.svg.axis()
+                  .scale(delayChartxScale)
+                  .orient("bottom")
+				  .tickFormat(formatWithoutComma);
+				  
+				delayChartSvg.select("g.delayChartAxis")
+					.attr("class", "delayChartxAxis") 
+					.call(delayChartAxisFn);
+					
+				var distanceChartAxisFn = d3.svg.axis()
+                  .scale(distanceChartxScale)
+                  .orient("bottom")
+				  .tickFormat(formatWithoutComma);
+				  
+				distanceChartSvg.select("g.distanceChartAxis")
+					.attr("class", "distanceChartxAxis") 
+					.call(distanceChartAxisFn);
+					
+				var dateChartAxisFn = d3.svg.axis()
+                  .scale(dateChartxScale)
+                  .orient("bottom")
+				  .tickFormat(formatWithoutComma);
+				  
+				dateChartSvg.select("g.dateChartAxis")
+					.attr("class", "dateChartxAxis") 
+					.call(dateChartAxisFn);
+					
+				// Using d3.nest, perform aggregation of the input data which will become our input to the charts
+				//
+				var nestedByArrTime = d3.nest()
+					.key(hourChartGroupingFn)
+					.entries(globalDataset);
+				
+				var nestedByArrDelay = d3.nest()
+					.key(delayChartGroupingFn)
+					.entries(globalDataset);
+				
+				var nestedByDistance = d3.nest()
+					.key(distanceChartGroupingFn)
+					.entries(globalDataset);
+				
+				var nestedByDate = d3.nest()
+					.key(dateChartGroupingFn)
+					.sortKeys(d3.descending)
+					.entries(globalDataset);
+				
+				// Generate y scale for all the charts
+				//
+				hourChartyScale = d3.scale.linear()
+					 .domain([0,
+					 d3.max(nestedByArrTime, function(d) { return d.values.length; })])
+					 .range([allChartHeight - padding.bottom, padding.top]);
+				
+				delayChartyScale = d3.scale.linear()
+					 .domain([0,
+					 d3.max(nestedByArrDelay, function(d) { return d.values.length; })])
+					 .range([allChartHeight - padding.bottom, padding.top]);
+				
+				distanceChartyScale = d3.scale.linear()
+					 .domain([0,
+					 d3.max(nestedByDistance, function(d) { return d.values.length; })])
+					 .range([allChartHeight - padding.bottom, padding.top]);
+				
+				dateChartyScale = d3.scale.linear()
+					 .domain([0,
+					 d3.max(nestedByDate, function(d) { return d.values.length; })])
+					 .range([allChartHeight - padding.bottom, padding.top]);
+	 
+				// Generate y axis function from the scale
+				//
+				var hourChartyAxisFn = d3.svg.axis()
+					.scale(hourChartyScale)
+					.orient("left");
+				
+				var delayChartyAxisFn = d3.svg.axis()
+					.scale(delayChartyScale)
+					.orient("left");
+				
+				
+				var distanceChartyAxisFn = d3.svg.axis()
+					.scale(distanceChartyScale)
+					.orient("left");
+				
+				var dateChartyAxisFn = d3.svg.axis()
+					.scale(dateChartyScale)
+					.orient("left");
+				
+				// Create the y axis G element
+				//
+				var hourChartyAxis = hourChartSvg.append("g")
+						.attr("class", "hourChartyAxis")  
+						.attr("transform", "translate(" + padding.left + ",0)");
+				
+				var delayChartyAxis = delayChartSvg.append("g")
+						.attr("class", "delayChartyAxis")  
+						.attr("transform", "translate(" + padding.left + ",0)");
+				
+				var distanceChartyAxis = distanceChartSvg.append("g")
+						.attr("class", "distanceChartyAxis")  
+						.attr("transform", "translate(" + padding.left + ",0)");
+				
+				var dateChartyAxis = dateChartSvg.append("g")
+						.attr("class", "dateChartyAxis")  
+						.attr("transform", "translate(" + padding.left + ",0)");
+				
+				// Render the y axis if needed
+				// 
+				/*
+				hourChartSvg.select("g.hourChartyAxis")
+					.attr("class", "hourChartyAxis")  
+					.call(hourChartyAxisFn);
+					
+				delayChartSvg.select("g.delayChartyAxis")
+					.attr("class", "delayChartyAxis")  
+					.call(delayChartyAxisFn);
+					
+				distanceChartSvg.select("g.distanceChartyAxis")
+					.attr("class", "distanceChartyAxis")  
+					.call(distanceChartyAxisFn);
+					
+				dateChartSvg.select("g.dateChartyAxis")
+					.attr("class", "dateChartyAxis")  
+					.call(dateChartyAxisFn);
+					*/
+					
+				// Add all the rectangles to the bar chart
+				//
+				hourChartSvg.selectAll(".bar")
+					.data(nestedByArrTime)
+					.enter().append("rect")
+					.attr("class", "bar")
+					.attr("x", function(d) { return hourChartxScale(parseInt(d.key, 10)); })
+					.attr("width", function(d) {return hourChartBarWidth;})
+					.attr("y", function(d) { return hourChartyScale(d.values.length); })
+					.attr("height", function(d) { return allChartHeight -  padding.bottom - hourChartyScale(d.values.length); });
+				
+				delayChartSvg.selectAll(".bar")
+					.data(nestedByArrDelay)
+					.enter().append("rect")
+					.attr("class", "bar")
+					.attr("x", function(d) { return delayChartxScale(parseInt(d.key, 10)); })
+					.attr("width", function(d) {return delayChartBarWidth;})
+					.attr("y", function(d) { return delayChartyScale(d.values.length); })
+					.attr("height", function(d) { return allChartHeight -  padding.bottom - delayChartyScale(d.values.length); });
+			
+				distanceChartSvg.selectAll(".bar")
+					.data(nestedByDistance)
+					.enter().append("rect")
+					.attr("class", "bar")
+					.attr("x", function(d) { return distanceChartxScale(parseInt(d.key, 10)); })
+					.attr("width", function(d) {return distanceChartBarWidth;})
+					.attr("y", function(d) { return distanceChartyScale(d.values.length); })
+					.attr("height", function(d) { return allChartHeight -  padding.bottom - distanceChartyScale(d.values.length); });
+					
+				dateChartSvg.selectAll(".bar")
+					.data(nestedByDate)
+					.enter().append("rect")
+					.attr("class", "bar")
+					.attr("x", function(d) { return dateChartxScale(parseInt(d.key, 10)); })
+					.attr("width", function(d) {return dateChartBarWidth;})
+					.attr("y", function(d) { return dateChartyScale(d.values.length); })
+					.attr("height", function(d) { return allChartHeight -  padding.bottom - dateChartyScale(d.values.length); });
+					
+				// Create a slider for each chart using d3 brushes
+				// It includes the following steps
+				// 1. Create brush g element
+				// 2. Create an arc for the slider
+				// 3. Create the rect to show selected area
+				//
+				hourChartBrush = d3.svg.brush()
+					.x(hourChartxScale)
+					.on("brushstart", function(){brushMove("hourChartBrush");})
+					.on("brush", function(){brushMove("hourChartBrush");})
+					.on("brushend", function(){brushMove("hourChartBrush");});
+				
+				var hourArc = d3.svg.arc()
+					.outerRadius(arcRadius)
+					.startAngle(0)
+					.endAngle(function(d, i) { return i ? -Math.PI : Math.PI; });
+
+				var hourBrushG = hourChartSvg.append("g")
+					.attr("class", "hourChartBrush")
+					.call(hourChartBrush);
+
+				hourBrushG.selectAll(".resize").append("path")
+					.attr("transform", "translate(0," +  allChartHeight / 2 + ")")
+					.attr("d", hourArc);
+
+				hourBrushG.selectAll("rect")
+					.attr("height", allChartHeight - padding.bottom)
+					.attr("opacity",0.1);
+
+				delayChartBrush = d3.svg.brush()
+					.x(delayChartxScale)
+					.on("brushstart", function(){brushMove("delayChartBrush");})
+					.on("brush", function(){brushMove("delayChartBrush");})
+					.on("brushend", function(){brushMove("delayChartBrush");});
+				
+				var delayArc = d3.svg.arc()
+					.outerRadius(arcRadius)
+					.startAngle(0)
+					.endAngle(function(d, i) { return i ? -Math.PI : Math.PI; });
+
+				var delayBrushG = delayChartSvg.append("g")
+					.attr("class", "delayChartBrush")
+					.call(delayChartBrush);
+
+				delayBrushG.selectAll(".resize").append("path")
+					.attr("transform", "translate(0," +  allChartHeight / 2 + ")")
+					.attr("d", delayArc);
+
+				delayBrushG.selectAll("rect")
+					.attr("height", allChartHeight - padding.bottom)
+					.attr("opacity",0.1);
+
+				distanceChartBrush = d3.svg.brush()
+					.x(distanceChartxScale)
+					.on("brushstart", function(){brushMove("distanceChartBrush");})
+					.on("brush", function(){brushMove("distanceChartBrush");})
+					.on("brushend", function(){brushMove("distanceChartBrush");});
+				
+				var distanceArc = d3.svg.arc()
+					.outerRadius(arcRadius)
+					.startAngle(0)
+					.endAngle(function(d, i) { return i ? -Math.PI : Math.PI; });
+
+				var distanceBrushG = distanceChartSvg.append("g")
+					.attr("class", "distanceChartBrush")
+					.call(distanceChartBrush);
+
+				distanceBrushG.selectAll(".resize").append("path")
+					.attr("transform", "translate(0," +  allChartHeight / 2 + ")")
+					.attr("d", distanceArc);
+
+				distanceBrushG.selectAll("rect")
+					.attr("height", allChartHeight - padding.bottom)
+					.attr("opacity",0.1);
+
+				dateChartBrush = d3.svg.brush()
+					.x(dateChartxScale)
+					.on("brushstart", function(){brushMove("dateChartBrush");})
+					.on("brush", function(){brushMove("dateChartBrush");})
+					.on("brushend", function(){brushMove("dateChartBrush");});
+					
+				var dateArc = d3.svg.arc()
+					.outerRadius(arcRadius)
+					.startAngle(0)
+					.endAngle(function(d, i) { return i ? -Math.PI : Math.PI; });
+
+				var dateBrushG = dateChartSvg.append("g")
+					.attr("class", "dateChartBrush")
+					.call(dateChartBrush);
+
+				dateBrushG.selectAll(".resize").append("path")
+					.attr("transform", "translate(0," +  allChartHeight / 2 + ")")
+					.attr("d", dateArc);
+
+				dateBrushG.selectAll("rect")
+					.attr("height", allChartHeight - padding.bottom)
+					.attr("opacity",0.1);
+				
+				// Create the flight list div for displaying list of flights
+				//
+				flightList = d3.select("body")
+					.append("div")
+					.attr("id", "flight-list");
+					
+				// Generate the actual list
+				//
+				var total = 0;
+				var displayData = nestedByDate.sort(function(a,b){ return parseInt(b.key, 10) - parseInt(a.key, 10);});
+				for(object of displayData){
+					if (total > maxRows) break;
+					var sortedValues = object.values.sort(function(a,b){ return parseInt(b.ArrTime, 10) - parseInt(a.ArrTime, 10);});
+					var dateDiv = flightList.append("div")
+						.attr("class", "date");
+					
+					dateDiv.append("div")
+						.attr("class", "day")
+						.text("January " + object.key + ", 2001");
+					
+					for(value of object.values){
+						if (total > maxRows) break;
+						total++;
+						var flightDiv = dateDiv.append("div")
+							.attr("class", "flight");
+						flightDiv.append("div")
+							.attr("class", "time")
+							.text(parseTime(value.ArrTime));
+						flightDiv.append("div")
+							.attr("class", "origin")
+							.text(value.Origin);
+						flightDiv.append("div")
+							.attr("class", "destination")
+							.text(value.Destination);
+						flightDiv.append("div")
+							.attr("class", "distance")
+							.text(value.Distance + " mi.");
+						flightDiv.append("div")
+							.attr("class", function(){if(value.ArrDelay > 0) return "delay late"; else return "delay early";})
+							.text(value.ArrDelay + " min.");
+					}
+				}
+				
+				// Add event streams here for listening to each slider events
+				//
+				var hourChartEvent = Stream.dom($('.hourChartBrush'), "brushMove");
+				var delayChartEvent = Stream.dom($('.delayChartBrush'), "brushMove");
+				var distanceChartEvent = Stream.dom($('.distanceChartBrush'), "brushMove");
+				var dateChartEvent = Stream.dom($('.dateChartBrush'), "brushMove");
+				
+				// Combine all streams to one single stream and throttle if needed
+				//
+				var mainStream = hourChartEvent.join(delayChartEvent)
+					.join(distanceChartEvent)
+					.join(dateChartEvent)
+					//.throttle(1)
+					;
+					
+				// Subscribe to the main stream and refresh charts on any new event generated
+				//
+				mainStream.subscribe(function(event){
+					//console.log("refreshing charts");
+					refreshCharts();
+				});
+			}
+			
+			// Refreshes all the charts on the page
+			//
+			function refreshCharts() {
+				// Refresh each of the four charts
+				//
+				refreshHourChart();
+				refreshDelayChart();
+				refreshDistanceChart();
+				refreshDateChart();
+				
+				// Get the updated filter values that will be used for filtering flight list
+				//
+				var hourChartFilter = hourChartBrush.extent();
+				var delayChartFilter = delayChartBrush.extent();
+				var distanceChartFilter = distanceChartBrush.extent();
+				var dateChartFilter = dateChartBrush.extent();
+				
+				// Filter the dataset
+				//
+				var filteredDataset = globalDataset.filter(function(d) {
+					if (hourChartFilter[0] < hourChartFilter[1]){
+						var val = hourChartGroupingFn(d);
+						if (hourChartFilter[0] <= val && val <= hourChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (delayChartFilter[0] < delayChartFilter[1]){
+						var val = delayChartGroupingFn(d);
+						if (delayChartFilter[0] <= val && val <= delayChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (distanceChartFilter[0] < distanceChartFilter[1]){
+						var val = distanceChartGroupingFn(d);
+						if (distanceChartFilter[0] <= val && val <= distanceChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (dateChartFilter[0] < dateChartFilter[1]){
+						var val = dateChartGroupingFn(d);
+						if (dateChartFilter[0] <= val && val <= dateChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					return true;
+				});
+				
+				// Update the flight counts
+				//
+				d3.select("body")
+					.select(".aside")
+					.text(filteredDataset.length + " of " + globalDataset.length + " flights displayed.");
+				
+				// Get the aggregated data
+				//
+				var nestedByDate = d3.nest()
+					.key(dateChartGroupingFn)
+					.entries(filteredDataset);
+				
+				// Update the list
+				//
+				flightList.selectAll("div").remove();
+				var total = 0;
+				var displayData = nestedByDate.sort(function(a,b){ return parseInt(b.key, 10) - parseInt(a.key, 10);});
+				for(object of displayData){
+					if (total > maxRows) break;
+					var sortedValues = object.values.sort(function(a,b){ return parseInt(b.ArrTime, 10) - parseInt(a.ArrTime, 10);});
+					var dateDiv = flightList.append("div")
+						.attr("class", "date");
+					
+					dateDiv.append("div")
+						.attr("class", "day")
+						.text("January " + object.key + ", 2001");
+					
+					for(value of object.values){
+						if (total > maxRows) break;
+						total++;
+						var flightDiv = dateDiv.append("div")
+							.attr("class", "flight");
+						flightDiv.append("div")
+							.attr("class", "time")
+							.text(parseTime(value.ArrTime));
+						flightDiv.append("div")
+							.attr("class", "origin")
+							.text(value.Origin);
+						flightDiv.append("div")
+							.attr("class", "destination")
+							.text(value.Destination);
+						flightDiv.append("div")
+							.attr("class", "distance")
+							.text(value.Distance + " mi.");
+						flightDiv.append("div")
+							.attr("class", function(){if(value.ArrDelay > 0) return "delay late"; else return "delay early";})
+							.text(value.ArrDelay + " min.");
+					}
+				}
+				
+					
+				//console.log("filtering completed");
+				//console.log(globalDataset.length);
+				//console.log(filteredDataset.length);
+			}
+				
+			// Refreshes the time of the day chart
+			//
+			function refreshHourChart() {
+				// Get all latest filter values
+				//
+				var hourChartFilter = hourChartBrush.extent();
+				var delayChartFilter = delayChartBrush.extent();
+				var distanceChartFilter = distanceChartBrush.extent();
+				var dateChartFilter = dateChartBrush.extent();
+				
+				// Filter the data
+				//
+				var filteredDataset = globalDataset.filter(function(d) {
+					if (delayChartFilter[0] < delayChartFilter[1]){
+						var val = delayChartGroupingFn(d);
+						if (delayChartFilter[0] <= val && val <= delayChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (distanceChartFilter[0] < distanceChartFilter[1]){
+						var val = distanceChartGroupingFn(d);
+						if (distanceChartFilter[0] <= val && val <= distanceChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (dateChartFilter[0] < dateChartFilter[1]){
+						var val = dateChartGroupingFn(d);
+						if (dateChartFilter[0] <= val && val <= dateChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					return true;
+				});
+				
+				// Perform the aggregation
+				//
+				var nestedByArrTime = d3.nest()
+					.key(hourChartGroupingFn)
+					.entries(filteredDataset);
+				
+				// Regenerate y scale to suit new min max values
+				//
+				hourChartyScale = d3.scale.linear()
+					 .domain([0,
+					 d3.max(nestedByArrTime, function(d) { return d.values.length; })])
+					 .range([allChartHeight - padding.bottom, padding.top]);
+				
+				var hourChartyAxisFn = d3.svg.axis()
+					.scale(hourChartyScale)
+					.orient("left");
+				
+				/*
+				hourChartSvg.select("g.hourChartyAxis")
+					.attr("class", "hourChartyAxis")  
+					.call(hourChartyAxisFn);
+				*/
+				
+				// Update the chart
+				//
+				hourChartSvg.selectAll(".bar").remove();
+				hourChartSvg.selectAll(".greybar").remove();
+				brushFiterSelect = function(d) {
+					if (hourChartFilter[0] < hourChartFilter[1]){
+						var val = d.key;
+						if (hourChartFilter[0] <= val && val <= hourChartFilter[1]){
+							// lies within the filter
+							return "bar";
+						} else { return "greybar"; }
+					}
+					return "bar";
+				}
+				
+				hourChartSvg.selectAll(".bar")
+					.data(nestedByArrTime)
+					.enter().append("rect")
+					.attr("class", brushFiterSelect)
+					.attr("x", function(d) { return hourChartxScale(parseInt(d.key, 10)); })
+					.attr("width", function(d) {return hourChartBarWidth;})
+					.attr("y", function(d) { return hourChartyScale(d.values.length); })
+					.attr("height", function(d) { return allChartHeight -  padding.bottom - hourChartyScale(d.values.length); });
+					
+			}
+
+			// Refreshes the arrival day chart
+			//
+			function refreshDelayChart() {
+				// Get all latest filter values
+				//
+				var hourChartFilter = hourChartBrush.extent();
+				var delayChartFilter = delayChartBrush.extent();
+				var distanceChartFilter = distanceChartBrush.extent();
+				var dateChartFilter = dateChartBrush.extent();
+				
+				// Filter the data
+				//
+				var filteredDataset = globalDataset.filter(function(d) {
+					if (hourChartFilter[0] < hourChartFilter[1]){
+						var val = hourChartGroupingFn(d);
+						if (hourChartFilter[0] <= val && val <= hourChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (distanceChartFilter[0] < distanceChartFilter[1]){
+						var val = distanceChartGroupingFn(d);
+						if (distanceChartFilter[0] <= val && val <= distanceChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (dateChartFilter[0] < dateChartFilter[1]){
+						var val = dateChartGroupingFn(d);
+						if (dateChartFilter[0] <= val && val <= dateChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					return true;
+				});
+				
+				// Perform the aggregation
+				//
+				var nestedByArrDelay = d3.nest()
+					.key(delayChartGroupingFn)
+					.entries(filteredDataset);
+				
+				// Regenerate y scale to suit new min max values
+				//
+				delayChartyScale = d3.scale.linear()
+					 .domain([0,
+					 d3.max(nestedByArrDelay, function(d) { return d.values.length; })])
+					 .range([allChartHeight - padding.bottom, padding.top]);
+				
+				var delayChartyAxisFn = d3.svg.axis()
+					.scale(delayChartyScale)
+					.orient("left");
+				
+				/*
+				delayChartSvg.select("g.delayChartyAxis")
+					.attr("class", "delayChartyAxis")  
+					.call(delayChartyAxisFn);
+				*/
+				
+				// Update the chart
+				//
+				delayChartSvg.selectAll(".bar").remove();
+				delayChartSvg.selectAll(".greybar").remove();
+				brushFiterSelect = function(d) {
+					if (delayChartFilter[0] < delayChartFilter[1]){
+						var val = d.key;
+						if (delayChartFilter[0] <= val && val <= delayChartFilter[1]){
+							// lies within the filter
+							return "bar";
+						} else { return "greybar"; }
+					}
+					return "bar";
+				}
+				
+				delayChartSvg.selectAll(".bar")
+					.data(nestedByArrDelay)
+					.enter().append("rect")
+					.attr("class", brushFiterSelect)
+					.attr("x", function(d) { return delayChartxScale(parseInt(d.key, 10)); })
+					.attr("width", function(d) {return delayChartBarWidth;})
+					.attr("y", function(d) { return delayChartyScale(d.values.length); })
+					.attr("height", function(d) { return allChartHeight -  padding.bottom - delayChartyScale(d.values.length); });
+			}
+
+			// Refreshes the distance chart
+			//
+			function refreshDistanceChart() {
+				// Get all latest filter values
+				//
+				var hourChartFilter = hourChartBrush.extent();
+				var delayChartFilter = delayChartBrush.extent();
+				var distanceChartFilter = distanceChartBrush.extent();
+				var dateChartFilter = dateChartBrush.extent();
+				
+				// Filter the data
+				//
+				var filteredDataset = globalDataset.filter(function(d) {
+					if (hourChartFilter[0] < hourChartFilter[1]){
+						var val = hourChartGroupingFn(d);
+						if (hourChartFilter[0] <= val && val <= hourChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (delayChartFilter[0] < delayChartFilter[1]){
+						var val = delayChartGroupingFn(d);
+						if (delayChartFilter[0] <= val && val <= delayChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (dateChartFilter[0] < dateChartFilter[1]){
+						var val = dateChartGroupingFn(d);
+						if (dateChartFilter[0] <= val && val <= dateChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					return true;
+				});
+				
+				// Perform the aggregation
+				//
+				var nestedByDistance = d3.nest()
+					.key(distanceChartGroupingFn)
+					.entries(filteredDataset);
+				
+				// Regenerate y scale to suit new min max values
+				//
+				distanceChartyScale = d3.scale.linear()
+					 .domain([0,
+					 d3.max(nestedByDistance, function(d) { return d.values.length; })])
+					 .range([allChartHeight - padding.bottom, padding.top]);
+				
+				var distanceChartyAxisFn = d3.svg.axis()
+					.scale(distanceChartyScale)
+					.orient("left");
+				
+				/*
+				distanceChartSvg.select("g.distanceChartyAxis")
+					.attr("class", "distanceChartyAxis")  
+					.call(distanceChartyAxisFn);
+				*/
+				
+				distanceChartSvg.selectAll(".bar").remove();
+				distanceChartSvg.selectAll(".greybar").remove();
+				brushFiterSelect = function(d) {
+					if (distanceChartFilter[0] < distanceChartFilter[1]){
+						var val = d.key;
+						if (distanceChartFilter[0] <= val && val <= distanceChartFilter[1]){
+							// lies within the filter
+							return "bar";
+						} else { return "greybar"; }
+					}
+					return "bar";
+				}
+				
+				distanceChartSvg.selectAll(".bar")
+					.data(nestedByDistance)
+					.enter().append("rect")
+					.attr("class", brushFiterSelect)
+					.attr("x", function(d) { return distanceChartxScale(parseInt(d.key, 10)); })
+					.attr("width", function(d) {return distanceChartBarWidth;})
+					.attr("y", function(d) { return distanceChartyScale(d.values.length); })
+					.attr("height", function(d) { return allChartHeight -  padding.bottom - distanceChartyScale(d.values.length); });
+			}
+
+			// Refreshes the date chart
+			//
+			function refreshDateChart() {
+				// Get all latest filter values
+				//
+				var hourChartFilter = hourChartBrush.extent();
+				var delayChartFilter = delayChartBrush.extent();
+				var distanceChartFilter = distanceChartBrush.extent();
+				var dateChartFilter = dateChartBrush.extent();
+				
+				// Filter the data
+				//
+				var filteredDataset = globalDataset.filter(function(d) {
+					if (hourChartFilter[0] < hourChartFilter[1]){
+						var val = hourChartGroupingFn(d);
+						if (hourChartFilter[0] <= val && val <= hourChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (delayChartFilter[0] < delayChartFilter[1]){
+						var val = delayChartGroupingFn(d);
+						if (delayChartFilter[0] <= val && val <= delayChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					if (distanceChartFilter[0] < distanceChartFilter[1]){
+						var val = distanceChartGroupingFn(d);
+						if (distanceChartFilter[0] <= val && val <= distanceChartFilter[1]){
+							// lies within the filter
+						} else { return false; }
+					}
+					return true;
+				});
+				
+				// Perform the aggregation
+				//
+				var nestedByDate = d3.nest()
+					.key(dateChartGroupingFn)
+					.entries(filteredDataset);
+					
+				// Regenerate y scale to suit new min max values
+				//
+				dateChartyScale = d3.scale.linear()
+					 .domain([0,
+					 d3.max(nestedByDate, function(d) { return d.values.length; })])
+					 .range([allChartHeight - padding.bottom, padding.top]);
+	 
+				var dateChartyAxisFn = d3.svg.axis()
+					.scale(dateChartyScale)
+					.orient("left");
+				/*
+				dateChartSvg.select("g.dateChartyAxis")
+					.attr("class", "dateChartyAxis")  
+					.call(dateChartyAxisFn);
+				*/
+				
+				// Update the chart
+				//
+				dateChartSvg.selectAll(".bar").remove();
+				dateChartSvg.selectAll(".greybar").remove();
+				brushFiterSelect = function(d) {
+					if (dateChartFilter[0] < dateChartFilter[1]){
+						var val = d.key;
+						if (dateChartFilter[0] <= val && val <= dateChartFilter[1]){
+							// lies within the filter
+							return "bar";
+						} else { return "greybar"; }
+					}
+					return "bar";
+				}
+				
+				dateChartSvg.selectAll(".bar")
+					.data(nestedByDate)
+					.enter().append("rect")
+					.attr("class", brushFiterSelect)
+					.attr("x", function(d) { return dateChartxScale(parseInt(d.key, 10)); })
+					.attr("width", function(d) {return dateChartBarWidth;})
+					.attr("y", function(d) { return dateChartyScale(d.values.length); })
+					.attr("height", function(d) { return allChartHeight -  padding.bottom - dateChartyScale(d.values.length); });
+			}
+
+			// Helper function to display time
+			//
+			function parseTime(time) {
+				var hour = Math.floor(time/100);
+				var min = time % 100;
+				var minString = min < 10 ? "0" + min : min;
+				var string = hour + ":" + minString;
+				return string;
+			}
+
+			// Helper function for event trigger
+			//
+			function brushMove(name) {
+				$("." + name).trigger("brushMove");
+			}
+			
+		</script>
+	</body>
+</html>

@@ -1,0 +1,448 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Nithin's D3 Demo: Making a scatterplot with SVG</title>
+		<script type="text/javascript" src="d3.v3.js"></script>
+		<script type="text/javascript" src="underscore.js"></script>
+		<style type="text/css">
+			/* No style rules here yet */
+			.xaxis path,
+			.xaxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.xaxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}
+
+			.yaxis path,
+			.yaxis line {
+				fill: none;
+				stroke: black;
+				shape-rendering: crispEdges;
+			}
+
+			.yaxis text {
+				font-family: sans-serif;
+				font-size: 11px;
+			}			
+		</style>
+	</head>
+	<body>
+		<script type="text/javascript">
+			var globalDataset; // a global
+			var svg;
+			var radius = 5;
+			var textoffset = 8;
+			var margin = {top: 20, right: 20, bottom: 20, left: 50},
+					padding = {top: 60, right: 60, bottom: 60, left: 60},
+					outerWidth = 1000,
+					outerHeight = 800,
+					innerWidth = outerWidth - margin.left - margin.right,
+					innerHeight = outerHeight - margin.top - margin.bottom,
+					width = innerWidth - padding.left - padding.right,
+					height = innerHeight - padding.top - padding.bottom;
+			
+			var xScale,	yScale, xAxis, yAxis; 
+				
+			var yearFormat = d3.format("04d"),
+				formatWithoutComma = d3.format("");
+				
+			var xScaleOffset = 3, 
+				yScaleOffset = 10;
+			
+			var exitTransitionTime = 500, // 500 ms
+				updateTransitionTime = 500, // 500 ms
+				enterTransitionTime = 500; // 500 ms
+			
+			//Define a selection onchange handler:
+			var selectionChangeHandler = function() {
+				var filtervalue = this.value;
+				var filteredDataset = globalDataset.filter(
+										function(d){return (d["paradigms"].indexOf(filtervalue) >= 0);});
+										
+				refreshGraph(filteredDataset);
+			}
+			
+			function getAllParadigms(data) {
+				dataset = data;
+				
+				paradigmData = _.map(dataset, function(d) { return d["paradigms"];});
+				flattenedParadigmData = _.flatten(paradigmData);
+				uniqData = _.uniq(flattenedParadigmData);
+				
+				selectBox = d3.select("body")
+								.append("select")
+								.attr("id", "paradigmSelect");
+								
+				selectBox.selectAll("option")
+							.data(uniqData)
+							.enter()
+							.append("option")
+							.text(function(d){ return d;});
+							
+				var paradigmSelect = document.getElementById("paradigmSelect");
+
+				//First try using addEventListener, the standard method to add a event listener:
+				if(paradigmSelect.addEventListener)
+				  paradigmSelect.addEventListener("change", selectionChangeHandler, false);
+				//If it doesn't exist, try attachEvent, the IE way:
+				else if(paradigmSelect.attachEvent)
+				  paradigmSelect.attachEvent("onchange", selectionChangeHandler);
+				//Just use onchange if neither exist
+				else
+				  paradigmSelect.onchange = selectionChangeHandler;
+			
+			}
+			
+			function drawGraphOld(data) {
+				var dataset = data;
+				
+				getAllParadigms(dataset);
+				
+				xScale = d3.scale.linear()
+                     .domain([d3.min(dataset, function(d) { return d["year"]; }) - xScaleOffset, 
+					 d3.max(dataset, function(d) { return d["year"]; }) + xScaleOffset])
+                     .range([0, width]);
+					 
+				yScale = d3.scale.log()
+                     .domain([d3.min(dataset, function(d) { return d["nbRepos"]; }) - yScaleOffset, 
+						d3.max(dataset, function(d) { return d["nbRepos"]; }) + yScaleOffset])
+                     .range([height, 0]);
+					 
+				svg.selectAll("circle")
+					.data(dataset)
+					.enter()
+					.append("circle")
+					.attr("cx", function(d) { return xScale(d["year"]); })
+					.attr("cy", function(d) { return yScale(d["nbRepos"]); })
+					.attr("r", radius);
+					
+				svg.selectAll("text")
+					.data(dataset)
+					.enter()
+					.append("text")
+					.text(function(d) { return d["name"]; })
+					.attr("x", function(d) { return xScale(d["year"]) + textoffset; })
+					.attr("y", function(d) { return yScale(d["nbRepos"]) + textoffset; })
+					.attr("font-family", "sans-serif")
+					.attr("font-size", "11px")
+					.attr("fill", "red");
+					
+				xAxis = d3.svg.axis()
+                  .scale(xScale)
+                  .orient("bottom")
+				  .tickFormat(formatWithoutComma);
+
+				svg.append("g")
+					.attr("class", "xaxis")  //Assign "xaxis" class
+					.attr("transform", "translate(0," + height + ")")
+					.call(xAxis);
+					
+				yAxis = d3.svg.axis()
+                  .scale(yScale)
+                  .orient("left")
+				  .tickFormat(formatWithoutComma);
+				  
+				svg.append("g")
+					.attr("class", "yaxis")  //Assign "yaxis" class
+					.call(yAxis);
+			}
+			
+			d3.selection.prototype.join = function(sel2, pred) {
+				var matches = this.filter(
+								function(d, i) {
+									var currValue = d3.select(this);
+									var matchExists = sel2.filter(
+											function(d) { return pred(currValue, d3.select(this)); }
+										);
+									
+									return matchExists.size() > 0;
+								}
+							);
+				return matches;
+			}
+			
+			d3.transition.prototype.join = d3.selection.prototype.join;
+
+			// Block on the last "end" event (from http://stackoverflow.com/a/20773846)
+			function endall(transition, callback) { 
+				if (transition.size() === 0) { callback() }
+				var n = 0; 
+				transition.each(function() { ++n; }) 
+				  .each("end", function() { if (!--n) callback.apply(this, arguments); }); 
+			}
+
+			// Call a callback, blocking on the end of all transitions
+			d3.transition.prototype.callOnEndAll = function(callback) {
+			  return this.call(endall, callback);
+			};
+			
+			function runJoinTestCode() {
+				// test code for join
+				var test = d3.select("body")
+				  .append("div")
+				  .attr("class", "test");
+							   
+				var sel2 = test.selectAll(".sel2")
+				  .data([3, 4, 5])
+				  .enter()
+				  .append("div")
+				  .attr("class", "sel2")
+				  .attr("foo", function(d) { return d });
+						
+				test.selectAll(".sel1")
+				  .data([5, 4, 3])
+				  .enter()
+				  .append("div")
+				  .attr("class", "sel1")
+				  .attr("foo", function(d) { return d })
+				  .join(sel2, function(n, m) {
+					 return n.attr("foo") == m.attr("foo");
+				  })
+				  .text("This is also in sel2!");
+
+				test.selectAll(".sel1")
+				  .data([1, 2, 3])
+				  .enter()
+				  .append("div")
+				  .attr("class", "sel1")
+				  .transition()
+				  .delay(500)
+				  .attr("foo", function(d) { return d })
+				  .join(sel2, function(n, m) {  // this is incorrect code
+					 return n.attr("foo") == m.attr("foo");
+				  })
+				  .text("This is also in sel2!");
+				
+				test.selectAll(".sel1")
+				  .data([1, 2, 3])
+				  .enter()
+				  .append("div")
+				  .attr("class", "sel1")
+				  .transition()
+				  .delay(500)
+				  .attr("foo", function(d) { return d })
+				  .callOnEndAll(function() {  // see the implementation of callOnEndAll below.
+					 d3.select(this).join(sel2, function(n, m) {
+					   return n.attr("foo") == m.attr("foo");
+					  }).text("This is also in sel2!");
+				  });
+			}
+			
+			// runJoinTestCode();
+			
+			function elementsOverlap(sel1, sel2) {
+				// bounding rectangles
+				var r1 = sel1.node().getBoundingClientRect();
+				var r2 = sel2.node().getBoundingClientRect();
+				
+				// http://stackoverflow.com/a/2752369
+				var returnVal = (r1.left <= r2.right 
+								&& r2.left <= r1.right 
+								&& r1.top <= r2.bottom 
+								&& r2.top <= r1.bottom);
+				
+				return returnVal;
+			}
+			
+			function checkIfPlacedOut(sel1, sel2) {
+				// bounding rectangles
+				var r1 = sel1.node().getBoundingClientRect();
+				var r2 = sel2.node().getBoundingClientRect();
+				
+				// http://stackoverflow.com/a/2752369
+				var returnVal = (r1.right >= r2.right 
+								|| r1.left <= r2.left 
+								|| r1.top <= r2.top 
+								|| r1.bottom >= r2.bottom);
+				
+				return returnVal;
+			}
+			
+			// log circles
+			function logOverlappingCircle(d) {
+				var cr = this.getBoundingClientRect();
+				 
+				console.log(
+				"Circle in (%d, %d, %d, %d) is obscured",
+				 cr.left, cr.right, cr.top, cr.bottom
+				);
+			}
+
+			// log text
+			function logMisplacedText(d) {
+				var cr = this.getBoundingClientRect();
+				 
+				console.log(
+				"Text in (%d, %d, %d, %d) is placed out of the SVG",
+				 cr.left, cr.right, cr.top, cr.bottom
+				);
+			}			
+
+			// log circle
+			function logMisplacedCircle(d) {
+				var cr = this.getBoundingClientRect();
+				 
+				console.log(
+				"Circle in (%d, %d, %d, %d) is placed out of the SVG",
+				 cr.left, cr.right, cr.top, cr.bottom
+				);
+			}			
+
+			function refreshGraph(dataset) {
+				xScale = d3.scale.linear()
+                     .domain([d3.min(dataset, function(d) { return d["year"]; }) - xScaleOffset, 
+					 d3.max(dataset, function(d) { return d["year"]; }) + xScaleOffset])
+                     .range([0, width]);
+					 
+				yScale = d3.scale.log()
+                     .domain([Math.max(d3.min(dataset, function(d) { return d["nbRepos"]; }) - yScaleOffset, 0), 
+						d3.max(dataset, function(d) { return d["nbRepos"]; }) + yScaleOffset])
+                     .range([height, 0]);
+				
+				updateCircleSet = svg.selectAll("circle")
+									.data(dataset, function(d) { return d["name"]; });
+				
+				updateTextSet = svg.selectAll("text.langtext")
+									.data(dataset, function(d) { return d["name"]; });
+			
+				exitCircleSet = updateCircleSet.exit();
+					
+				exitTextSet = updateTextSet.exit();
+				
+				enterCircleSet = updateCircleSet.enter();
+				
+				enterTextSet = updateTextSet.enter();
+				
+				exitCircleSet.style("opacity",1)
+					.transition()
+					.duration(exitTransitionTime)
+					.attr("class", "exitCircle")
+					.style("opacity",0)
+					.remove();
+					
+				exitTextSet.style("opacity",1)
+					.transition()
+					.duration(exitTransitionTime)
+					.style("opacity",0)
+					.remove();
+				
+				if (updateCircleSet.size() != 0) {
+					updateCircleSet
+						.transition()
+						.delay(exitTransitionTime)
+						.duration(updateTransitionTime)
+						.callOnEndAll(function() {
+								svg.selectAll("circle.updateCircle").join(svg.selectAll("text.langtext"), elementsOverlap).each(logOverlappingCircle);
+								svg.selectAll("circle.updateCircle").join(svg, checkIfPlacedOut).each(logMisplacedCircle);
+							})
+						.attr("cx", function(d) { return xScale(d["year"]); })
+						.attr("cy", function(d) { return yScale(d["nbRepos"]); })
+						.attr("r", radius)
+						.attr("class", "updateCircle")
+						.attr("fill", "darkgray")
+						.attr("stroke", "black");
+					
+					updateTextSet
+						.transition()
+						.delay(exitTransitionTime)
+						.duration(updateTransitionTime)
+						.text(function(d) { return d["name"]; })
+						.attr("x", function(d) { return xScale(d["year"]) + textoffset; })
+						.attr("y", function(d) { return yScale(d["nbRepos"]) + textoffset; })
+						.attr("class", "langtext")
+						.attr("font-family", "sans-serif")
+						.attr("font-size", "11px")
+						.attr("fill", "red");	
+
+				}
+				
+				if (enterCircleSet.size() != 0) {
+					enterCircleSet.append("circle")
+						.style("opacity",0)
+						.transition()
+						.delay(exitTransitionTime + updateTransitionTime)
+						.duration(enterTransitionTime)
+						.callOnEndAll(function() {
+								svg.selectAll("circle.enterCircle").join(svg.selectAll("text.langtext"), elementsOverlap).each(logOverlappingCircle);
+								svg.selectAll("circle.enterCircle").join(svg, checkIfPlacedOut).each(logMisplacedCircle);
+								svg.selectAll("text.langtext").join(svg, checkIfPlacedOut).each(logMisplacedText);
+							})
+						.style("opacity",1)
+						.attr("class", "enterCircle")
+						.attr("cx", function(d) { return xScale(d["year"]); })
+						.attr("cy", function(d) { return yScale(d["nbRepos"]); })
+						.attr("r", radius)
+						.attr("fill", "darkgray")
+						.attr("stroke", "black");				
+
+					enterTextSet.append("text")
+						.style("opacity",0)
+						.transition()
+						.delay(exitTransitionTime + updateTransitionTime)
+						.duration(enterTransitionTime + 1)
+						.style("opacity",1)
+						.text(function(d) { return d["name"]; })
+						.attr("x", function(d) { return xScale(d["year"]) + textoffset; })
+						.attr("y", function(d) { return yScale(d["nbRepos"]) + textoffset; })
+						.attr("class", "langtext")
+						.attr("font-family", "sans-serif")
+						.attr("font-size", "11px")
+						.attr("fill", "red");				
+				}
+				
+				xAxis = d3.svg.axis()
+                  .scale(xScale)
+                  .orient("bottom")
+				  .tickFormat(yearFormat);
+
+  				yAxis = d3.svg.axis()
+                  .scale(yScale)
+                  .orient("left")
+				  .tickFormat(formatWithoutComma);
+
+				svg.select("g.xaxis")
+					.transition()
+					.delay(exitTransitionTime)
+					.duration(updateTransitionTime)
+					.attr("class", "xaxis")  //Assign "xaxis" class
+					.call(xAxis);
+				
+				svg.select("g.yaxis")
+					.transition()
+					.delay(exitTransitionTime)
+					.duration(updateTransitionTime)
+					.attr("class", "yaxis")  //Assign "yaxis" class
+					.call(yAxis);
+			}
+
+			d3.json("data.json", function(error, json) {
+				if (error) return console.warn(error);
+				globalDataset = json;
+				
+				getAllParadigms(globalDataset);
+
+				svg = d3.select("body")
+						.append("svg")
+						.attr("width", outerWidth)
+						.attr("height", outerHeight)
+						.append("g")
+						.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+				
+				svg.append("g")
+					.attr("class", "xaxis")  //Assign "xaxis" class
+					.attr("transform", "translate(0," + height + ")");
+				  
+				svg.append("g")
+					.attr("class", "yaxis");  //Assign "yaxis" class
+					
+								
+				refreshGraph(globalDataset);
+			});
+		</script>
+	</body>
+</html>
